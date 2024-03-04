@@ -48,29 +48,32 @@ class Agent:
             self.dx = (self.dx / speed) * MAX_SPEED
             self.dy = (self.dy / speed) * MAX_SPEED
 
-    def move_positional(self, locations):
+    def move_positional(self, agents):
         x = 0
         y = 0
-        for location in locations:
-            x += self.x - location.x
-            y += self.y - location.y
-        self.dx = SIGMA * (x / len(locations))
-        self.dy = SIGMA * (y / len(locations))
+        for agent in agents:
+            if agent != self:
+                x += self.x - agent.x
+                y += self.y - agent.y
+        self.dx = SIGMA * (x / len(agents))
+        self.dy = SIGMA * (y / len(agents))
 
-    def move_with_bearing_only_unlimited_visibility(self, locations):
+    def move_with_bearing_only(self, agents):
         x = 0
         y = 0
-        for location in locations:
-            norm = math.sqrt(
-                ((location.x - self.x) ** 2) + ((location.y - self.y) ** 2)
-            )
-            if norm == 0:
-                pass
-            else:
-                x += (self.x - location.x) / norm
-                y += (self.y - location.y) / norm
-        self.dx = SIGMA * x
+        for agent in agents:
+            if agent != self:
+                norm = math.sqrt(
+                    ((agent.x - self.x) ** 2) + ((agent.y - self.y) ** 2)
+                )
+                if norm == 0:
+                    pass
+                else:
+                    x += (self.x - agent.x) / norm
+                    y += (self.y - agent.y) / norm
+        self.dx = SIGMA * x 
         self.dy = SIGMA * y
+        print(x**2 + y**2)
 
     def move(self):
         self.x += self.dx
@@ -91,8 +94,11 @@ agents = [
 
 # Main loop
 running = True
+i = 0
 while running:
     screen.fill(BG_COLOR)
+
+    i = (i + 1) % NUM_AGENTS
 
     # Handle events
     for event in pygame.event.get():
@@ -104,17 +110,13 @@ while running:
     centroid_y = sum(agent.y for agent in agents) / NUM_AGENTS
 
     # Move agents towards the centroid
-    for agent in agents:
-        agent.move_towards(centroid_x, centroid_y)
-        # agent.move_positional(agents)
-        # agent.move_with_bearing_only_unlimited_visibility(agents)
+    for agent_i, agent in enumerate(agents):
+        # Simulate continuous time by only updating movement every so often and in random order
+        if agent_i % 50 == i % 50:
+            # agent.move_towards(centroid_x, centroid_y)
+            # agent.move_positional(agents)
+            agent.move_with_bearing_only(agents)
         agent.move()
-
-        # Make agents bounce off walls
-        if agent.x < 0 or agent.x > WIDTH:
-            agent.dx *= -1
-        if agent.y < 0 or agent.y > HEIGHT:
-            agent.dy *= -1
 
     # Draw agents
     for agent in agents:

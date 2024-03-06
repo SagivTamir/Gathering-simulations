@@ -1,26 +1,59 @@
 import pygame
 import numpy as np
-import random
+import time
+from functools import wraps
+from scipy.spatial import cKDTree
 
 # Define constants
 WIDTH = 1000
 HEIGHT = 1000
-NUM_AGENTS = 200
+NUM_AGENTS = 100
 AGENT_SIZE = 10
 BG_COLOR = (255, 255, 255)
 AGENT_COLOR = (0, 0, 255)
 TARGET_COLOR = (255, 0, 0)
-MAX_SPEED = 1
+MAX_SPEED = 2
 TARGET_RADIUS = AGENT_SIZE
 GATHERING_RADIUS = 20
-SIGMA = 0.02
-ALLOW_COLLISIONS = True
-ALLOW_INITIAL_OVERLAPS = False
+SIGMA = 0.1
+ALLOW_INITIAL_OVERLAPS = True
+ALLOW_COLLISIONS = False
+COLLISION_ALGORITHM = 2  # 0 = Naive, 1 = Sweep and Prune, 2 = KD tree
+
+
+def avg_time_tracker(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # This is where we'll keep track of all the execution times
+        if not hasattr(wrapper, "execution_times"):
+            wrapper.execution_times = []
+
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+
+        # Calculate the execution time for this call and store it
+        execution_time = end_time - start_time
+        wrapper.execution_times.append(execution_time)
+
+        # Calculate the average execution time
+        average_execution_time = sum(wrapper.execution_times) / len(
+            wrapper.execution_times
+        )
+        print(
+            f"Execution time of {func.__name__}: Current {execution_time:.5f}, Average: {average_execution_time:.5f}"
+        )
+
+        return result
+
+    return wrapper
 
 
 def initialize_positions(num_agents, agent_size, width, height):
     if ALLOW_INITIAL_OVERLAPS:
-        return np.float64(np.random.randint(0, high=[WIDTH, HEIGHT], size=(NUM_AGENTS, 2)))
+        return np.float64(
+            np.random.randint(0, high=[WIDTH, HEIGHT], size=(NUM_AGENTS, 2))
+        )
 
     positions = np.zeros((num_agents, 2), dtype=np.float64)
     for i in range(num_agents):
@@ -45,6 +78,100 @@ def initialize_positions(num_agents, agent_size, width, height):
     return positions
 
 
+@avg_time_tracker
+def vectorized_collision_adjustment_kd_tree(positions, velocities):
+    # Create a k-d tree for positions
+    tree = cKDTree(positions)
+
+    # Query the k-d tree for neighbors within collision distance
+    collision_pairs = tree.query_pairs(r=2 * AGENT_SIZE)
+
+    # Initialize an empty list to store collision adjustments for each agent
+    velocity_adjustments = np.zeros_like(velocities)
+
+    for i, j in collision_pairs:
+        # Calculate the vector from agent i to agent j
+        collision_vector = positions[j] - positions[i]
+        distance = np.linalg.norm(collision_vector)
+
+        # Avoid division by zero
+        if distance == 0:
+            continue
+
+        normalized_collision_vector = collision_vector / distance
+        dot_product_i = np.dot(velocities[i], normalized_collision_vector)
+        dot_product_j = np.dot(velocities[j], normalized_collision_vector)
+
+        # Adjust velocity for agent i if moving towards agent j
+        if dot_product_i > 0:
+            velocity_adjustments[i] -= dot_product_i * normalized_collision_vector
+
+        # Adjust velocity for agent j if moving towards agent i
+        if dot_product_j < 0:
+            velocity_adjustments[j] -= dot_product_j * normalized_collision_vector
+
+    # Apply velocity adjustments
+    velocities += velocity_adjustments
+
+
+@avg_time_tracker
+def sweep_and_prune_collision_adjustment(positions, velocities):
+    def find_potential_pairs(sorted_indices, axis):
+        potentials = set()
+        for i in range(NUM_AGENTS - 1):
+            for j in range(i + 1, NUM_AGENTS):
+                if (
+                    positions[sorted_indices[j], axis]
+                    - positions[sorted_indices[i], axis]
+                    < 2 * AGENT_SIZE
+                ):
+                    potentials.add(
+                        (
+                            min(sorted_indices[i], sorted_indices[j]),
+                            max(sorted_indices[i], sorted_indices[j]),
+                        )
+                    )
+                else:
+                    break
+        return potentials
+
+    potential_pairs_x = find_potential_pairs(np.argsort(positions[:, 0]), 0)
+    # potential_pairs_y = find_potential_pairs(np.argsort(positions[:, 1]), 1)
+
+    # Intersection of potential pairs in both axes
+    # potential_pairs = list(potential_pairs_x.intersection(potential_pairs_y))
+    potential_pairs = list(potential_pairs_x)
+
+    # Collision Detection
+    if potential_pairs:
+        pair_indices = np.array(potential_pairs)
+        p1_indices, p2_indices = pair_indices[:, 0], pair_indices[:, 1]
+
+        p1_positions = positions[p1_indices]
+        p2_positions = positions[p2_indices]
+        diff_positions = p1_positions - p2_positions
+        distances = np.linalg.norm(diff_positions, axis=1)
+
+        collision_mask = (distances > 0) & (distances < 2 * AGENT_SIZE)
+        collision_indices = np.where(collision_mask)[0]  # Indices of pairs that collide
+
+        # Collision Resolution
+        for index in collision_indices:
+            i, j = p1_indices[index], p2_indices[index]
+            collision_vector = diff_positions[index]
+            distance = distances[index]
+            normalized_collision_vector = collision_vector / distance
+
+            dot_product_i = np.dot(velocities[i], normalized_collision_vector)
+            if dot_product_i < 0:
+                velocities[i] -= dot_product_i * normalized_collision_vector
+
+            dot_product_j = np.dot(velocities[j], -normalized_collision_vector)
+            if dot_product_j < 0:
+                velocities[j] += dot_product_j * normalized_collision_vector
+
+
+@avg_time_tracker
 def vectorized_collision_adjustment(positions, velocities):
     # Detect and resolve collisions
     diff_positions = positions[:, np.newaxis] - positions
@@ -81,7 +208,12 @@ def move_agents(positions, velocities):
 
     if not ALLOW_COLLISIONS:
         # Collision adjustment
-        vectorized_collision_adjustment(positions, velocities)
+        if COLLISION_ALGORITHM == 0:
+            vectorized_collision_adjustment(positions, velocities)
+        elif COLLISION_ALGORITHM == 1:
+            sweep_and_prune_collision_adjustment(positions, velocities)
+        else:
+            vectorized_collision_adjustment_kd_tree(positions, velocities)
 
     # Normalize velocities to have a maximum speed
     speeds = np.linalg.norm(velocities, axis=1)
@@ -126,7 +258,7 @@ def main():
         pygame.draw.circle(screen, TARGET_COLOR, centroid.astype(int), TARGET_RADIUS)
 
         pygame.display.flip()
-        clock.tick(100)
+        clock.tick(60)
 
     pygame.quit()
 

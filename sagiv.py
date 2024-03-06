@@ -17,6 +17,7 @@ GATHERING_RADIUS = 20
 SIGMA = -0.02
 COLLISIONS = True
 
+
 # Define Agent class
 class Agent:
     def __init__(self, p):
@@ -58,15 +59,13 @@ class Agent:
         y = 0
         for agent in agents:
             if agent != self:
-                norm = math.sqrt(
-                    ((agent.x - self.x) ** 2) + ((agent.y - self.y) ** 2)
-                )
+                norm = math.sqrt(((agent.x - self.x) ** 2) + ((agent.y - self.y) ** 2))
                 if norm == 0:
                     pass
                 else:
                     x += (self.x - agent.x) / norm
                     y += (self.y - agent.y) / norm
-        self.dx = SIGMA * x 
+        self.dx = SIGMA * x
         self.dy = SIGMA * y
 
     # def move(self, agents):
@@ -74,7 +73,7 @@ class Agent:
     #         self.x += self.dx
     #         self.y += self.dy
     #         return
-        
+
     #     colliding_agents = []
     #     for agent in agents:
     #         if agent != self:
@@ -82,7 +81,7 @@ class Agent:
     #             if distance <= 2 * AGENT_SIZE:
     #                 colliding_agents += [agent]
     #                 return
-        
+
     #     unit
     #     self.x += self.dx
     #     self.y += self.dy
@@ -91,16 +90,35 @@ class Agent:
         if not COLLISIONS:
             self.p += self.dp
             return
-        
-        colliding_agents = []
+
+        collisions = []
         for agent in agents:
             if agent != self:
-                distance =  np.linalg.norm(self.p - agent.p)
+                distance = np.linalg.norm(self.p - agent.p)
                 if distance <= 2 * AGENT_SIZE:
-                    colliding_agents += [(self.p - agent.p) / distance]
-                    return
-        
-        u_dp = self.dp / np.linalg.norm(self.dp)
+                    collisions += [(self.p - agent.p) / distance]
+                    # return
+
+        if not collisions:
+            self.p += self.dp
+            return
+
+        v_dp = np.linalg.norm(self.dp)
+        u_dp = self.dp / v_dp
+
+        for collision in collisions:
+            # Calculate the component of the collision normal perpendicular to the velocity
+            collision_perpendicular = collision - np.dot(u_dp, collision) * u_dp
+            collision_perpendicular_norm = np.linalg.norm(collision_perpendicular)
+            if collision_perpendicular_norm > 0:
+                collision_perpendicular /= collision_perpendicular_norm
+            u_dp -= np.dot(u_dp, collision_perpendicular) * collision_perpendicular
+
+        u_dp_norm = np.linalg.norm(u_dp)
+        if u_dp_norm > 0:
+            self.dp = u_dp / u_dp_norm * v_dp
+        else:
+            return
 
         self.p += self.dp
 
@@ -114,7 +132,9 @@ def main():
 
     # Create agents
     agents = [
-        Agent(np.array([random.randint(0, WIDTH), random.randint(0, HEIGHT)], dtype=float))
+        Agent(
+            np.array([random.randint(0, WIDTH), random.randint(0, HEIGHT)], dtype=float)
+        )
         for _ in range(NUM_AGENTS)
     ]
 
@@ -139,7 +159,7 @@ def main():
             # Simulate continuous time by only updating movement every so often and in random order
             # if agent_i % 50 == i % 50:
             agent.move_towards(centroid_p)
-                # agent.move_positional(agents)
+            # agent.move_positional(agents)
             # agent.move_with_bearing_only(agents)
             agent.move(agents)
 
@@ -151,7 +171,10 @@ def main():
 
         # Draw target point
         pygame.draw.circle(
-            screen, TARGET_COLOR, (int(centroid_p[0]), int(centroid_p[1])), TARGET_RADIUS
+            screen,
+            TARGET_COLOR,
+            (int(centroid_p[0]), int(centroid_p[1])),
+            TARGET_RADIUS,
         )
 
         pygame.display.flip()

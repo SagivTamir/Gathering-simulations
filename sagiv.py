@@ -5,18 +5,25 @@ import numpy as np
 
 # Define constants
 WIDTH = 1000
-HEIGHT = 1000
-NUM_AGENTS = 200
+HEIGHT = 800
+NUM_AGENTS = 10
 AGENT_SIZE = 10
 BG_COLOR = (255, 255, 255)
 AGENT_COLOR = (0, 0, 255)
 TARGET_COLOR = (255, 0, 0)
-MAX_SPEED = 5
+MAX_SPEED = 3
 TARGET_RADIUS = AGENT_SIZE
 GATHERING_RADIUS = 20
 SIGMA = -0.02
-COLLISIONS = True
 
+COLLISIONS = False
+
+NUM_AGENTS = 20
+POSITIONAL_SENSING = 0
+BEARING_ONLY = 1
+STUDY_CASE = BEARING_ONLY
+
+SIGMA = -0.2 if STUDY_CASE == BEARING_ONLY else -0.02
 
 # Define Agent class
 class Agent:
@@ -49,42 +56,24 @@ class Agent:
         y = 0
         for agent in agents:
             if agent != self:
-                x += self.x - agent.x
-                y += self.y - agent.y
-        self.dx = SIGMA * (x / NUM_AGENTS)
-        self.dy = SIGMA * (y / NUM_AGENTS)
+                x += self.p[0] - agent.p[0]
+                y += self.p[1] - agent.p[1]
+        self.dp[0] = SIGMA * (x / NUM_AGENTS)
+        self.dp[1] = SIGMA * (y / NUM_AGENTS)
 
     def move_with_bearing_only(self, agents):
         x = 0
         y = 0
         for agent in agents:
             if agent != self:
-                norm = math.sqrt(((agent.x - self.x) ** 2) + ((agent.y - self.y) ** 2))
+                norm = math.sqrt(((agent.p[0] - self.p[0]) ** 2) + ((agent.p[1] - self.p[1]) ** 2))
                 if norm == 0:
                     pass
                 else:
-                    x += (self.x - agent.x) / norm
-                    y += (self.y - agent.y) / norm
-        self.dx = SIGMA * x
-        self.dy = SIGMA * y
-
-    # def move(self, agents):
-    #     if not COLLISIONS:
-    #         self.x += self.dx
-    #         self.y += self.dy
-    #         return
-
-    #     colliding_agents = []
-    #     for agent in agents:
-    #         if agent != self:
-    #             distance =  math.sqrt((self.x - agent.x) ** 2 + (self.y - agent.y) ** 2)
-    #             if distance <= 2 * AGENT_SIZE:
-    #                 colliding_agents += [agent]
-    #                 return
-
-    #     unit
-    #     self.x += self.dx
-    #     self.y += self.dy
+                    x += (self.p[0] - agent.p[0]) / norm
+                    y += (self.p[1] - agent.p[1]) / norm
+        self.dp[0] = SIGMA * x
+        self.dp[1] = SIGMA * y
 
     def move(self, agents):
         if not COLLISIONS:
@@ -123,6 +112,7 @@ class Agent:
         self.p += self.dp
 
 
+
 def main():
     # Initialize Pygame
     pygame.init()
@@ -156,11 +146,14 @@ def main():
 
         # Move agents towards the centroid
         for agent_i, agent in enumerate(agents):
-            # Simulate continuous time by only updating movement every so often and in random order
-            # if agent_i % 50 == i % 50:
-            agent.move_towards(centroid_p)
-            # agent.move_positional(agents)
-            # agent.move_with_bearing_only(agents)
+            # # Simulate continuous time by only updating movement every so often and in random order
+            # if agent_i % 20 == i % 20:
+            #     agent.move_towards(centroid_p)
+            if (STUDY_CASE == POSITIONAL_SENSING):
+                agent.move_positional(agents)
+            if (STUDY_CASE == BEARING_ONLY):
+                agent.move_with_bearing_only(agents)
+
             agent.move(agents)
 
         # Draw agents

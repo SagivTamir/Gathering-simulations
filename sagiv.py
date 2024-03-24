@@ -4,6 +4,7 @@ import math
 import numpy as np
 
 # Define constants
+COLLISIONS = 0
 WIDTH = 1000
 HEIGHT = 800
 NUM_AGENTS = 10
@@ -14,16 +15,14 @@ TARGET_COLOR = (255, 0, 0)
 MAX_SPEED = 3
 TARGET_RADIUS = AGENT_SIZE
 GATHERING_RADIUS = 20
-SIGMA = -0.02
 
-COLLISIONS = False
 
-NUM_AGENTS = 20
-POSITIONAL_SENSING = 0
+NUM_AGENTS = 10
+POSITION_SENSING = 0
 BEARING_ONLY = 1
 STUDY_CASE = BEARING_ONLY
 
-SIGMA = -0.2 if STUDY_CASE == BEARING_ONLY else -0.02
+SIGMA = -0.2 if STUDY_CASE == BEARING_ONLY else -0.01
 
 # Define Agent class
 class Agent:
@@ -149,7 +148,7 @@ def main():
             # # Simulate continuous time by only updating movement every so often and in random order
             # if agent_i % 20 == i % 20:
             #     agent.move_towards(centroid_p)
-            if (STUDY_CASE == POSITIONAL_SENSING):
+            if (STUDY_CASE == POSITION_SENSING):
                 agent.move_positional(agents)
             if (STUDY_CASE == BEARING_ONLY):
                 agent.move_with_bearing_only(agents)

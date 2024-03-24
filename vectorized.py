@@ -4,11 +4,14 @@ import time
 from functools import wraps
 from scipy.spatial import cKDTree
 
+# 1 add to slide why naive is divergent
+# 2 add timing to screen
+
 # Define constants
 WIDTH = 1000
 HEIGHT = 1000
-NUM_AGENTS = 100
-AGENT_SIZE = 10
+NUM_AGENTS = 1000
+AGENT_SIZE = 3
 BG_COLOR = (255, 255, 255)
 AGENT_COLOR = (0, 0, 255)
 TARGET_COLOR = (255, 0, 0)
@@ -18,7 +21,7 @@ GATHERING_RADIUS = 20
 SIGMA = 0.1
 ALLOW_INITIAL_OVERLAPS = True
 ALLOW_COLLISIONS = False
-COLLISION_ALGORITHM = 2  # 0 = Naive, 1 = Sweep and Prune, 2 = KD tree
+COLLISION_ALGORITHM = 0  # 0 = Naive, 1 = Sweep and Prune, 2 = KD tree
 
 
 def avg_time_tracker(func):

@@ -17,12 +17,12 @@ TARGET_RADIUS = AGENT_SIZE
 GATHERING_RADIUS = 20
 
 
-NUM_AGENTS = 10
+NUM_AGENTS = 3
 POSITION_SENSING = 0
 BEARING_ONLY = 1
 STUDY_CASE = BEARING_ONLY
 
-SIGMA = -0.2 if STUDY_CASE == BEARING_ONLY else -0.01
+SIGMA = -0.2 if STUDY_CASE == BEARING_ONLY else -0.001
 
 # Define Agent class
 class Agent:
@@ -127,6 +127,9 @@ def main():
         for _ in range(NUM_AGENTS)
     ]
 
+    # Initialize font
+    font = pygame.font.SysFont('Arial', 30)
+
     # Main loop
     running = True
     i = 0
@@ -168,6 +171,11 @@ def main():
             (int(centroid_p[0]), int(centroid_p[1])),
             TARGET_RADIUS,
         )
+
+        algorithm_names = ["Positional Sensing", "Bearing Only"]
+        text = f"Algorithm: {algorithm_names[STUDY_CASE]}, Agents: {NUM_AGENTS}, Sigma: {-SIGMA}"
+        text_surface = font.render(text, True, (0, 0, 0))
+        screen.blit(text_surface, (10, 10))
 
         pygame.display.flip()
         clock.tick(100)

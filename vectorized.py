@@ -6,9 +6,9 @@ from scipy.spatial import cKDTree
 
 # Define constants
 WIDTH = 1000
-HEIGHT = 700
-NUM_AGENTS = 50
-AGENT_SIZE = 10
+HEIGHT = 800
+NUM_AGENTS = 8000
+AGENT_SIZE = 2
 BG_COLOR = (255, 255, 255)
 AGENT_COLOR = (0, 0, 255)
 TARGET_COLOR = (255, 0, 0)
@@ -18,7 +18,7 @@ GATHERING_RADIUS = 20
 SIGMA = 0.1
 ALLOW_INITIAL_OVERLAPS = True
 ALLOW_COLLISIONS = False
-COLLISION_ALGORITHM = 0  # 0 = Naive, 1 = Sweep and Prune, 2 = KD tree
+COLLISION_ALGORITHM = 2  # 0 = Naive, 1 = Sweep and Prune, 2 = KD tree
 
 tracker_latest_execution_time = 0.0
 tracker_average_execution_time = 0.0
@@ -243,7 +243,7 @@ def main():
     velocities = np.zeros((NUM_AGENTS, 2))
 
     # Initialize font
-    font = pygame.font.SysFont('Arial', 24)
+    font = pygame.font.SysFont('Arial', 30)
 
     # Main loop
     running = True

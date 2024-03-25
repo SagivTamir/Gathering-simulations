@@ -4,14 +4,11 @@ import time
 from functools import wraps
 from scipy.spatial import cKDTree
 
-# 1 add to slide why naive is divergent
-# 2 add timing to screen
-
 # Define constants
 WIDTH = 1000
-HEIGHT = 1000
-NUM_AGENTS = 1000
-AGENT_SIZE = 3
+HEIGHT = 700
+NUM_AGENTS = 50
+AGENT_SIZE = 10
 BG_COLOR = (255, 255, 255)
 AGENT_COLOR = (0, 0, 255)
 TARGET_COLOR = (255, 0, 0)
@@ -22,6 +19,9 @@ SIGMA = 0.1
 ALLOW_INITIAL_OVERLAPS = True
 ALLOW_COLLISIONS = False
 COLLISION_ALGORITHM = 0  # 0 = Naive, 1 = Sweep and Prune, 2 = KD tree
+
+tracker_latest_execution_time = 0.0
+tracker_average_execution_time = 0.0
 
 
 def avg_time_tracker(func):
@@ -46,6 +46,9 @@ def avg_time_tracker(func):
         print(
             f"Execution time of {func.__name__}: Current {execution_time:.5f}, Average: {average_execution_time:.5f}"
         )
+        global tracker_average_execution_time, tracker_latest_execution_time
+        tracker_average_execution_time = average_execution_time
+        tracker_latest_execution_time = execution_time
 
         return result
 
@@ -239,6 +242,9 @@ def main():
     positions = initialize_positions(NUM_AGENTS, AGENT_SIZE, WIDTH, HEIGHT)
     velocities = np.zeros((NUM_AGENTS, 2))
 
+    # Initialize font
+    font = pygame.font.SysFont('Arial', 24)
+
     # Main loop
     running = True
     while running:
@@ -259,6 +265,12 @@ def main():
         # Draw target point
         centroid = positions.mean(axis=0)
         pygame.draw.circle(screen, TARGET_COLOR, centroid.astype(int), TARGET_RADIUS)
+
+        algorithm_names = ["Naive", "Sweep and Prune", "KD Tree"]
+        global tracker_latest_execution_time, tracker_average_execution_time
+        text = f"Algorithm: {algorithm_names[COLLISION_ALGORITHM]}, Agents: {NUM_AGENTS}, Latest: {tracker_latest_execution_time:.5f}s, Avg: {tracker_average_execution_time:.5f}s"
+        text_surface = font.render(text, True, (0, 0, 0))
+        screen.blit(text_surface, (10, 10))
 
         pygame.display.flip()
         clock.tick(60)
